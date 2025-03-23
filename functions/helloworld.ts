@@ -7,6 +7,8 @@ import type { Context } from "@netlify/functions";
 
 export default async (req: Request, context: Context) => {
 
+	console.log('method is called')
+
   const API_KEY = process.env.GOOGLE_DRIVE_AUTH_KEY;
 
   const API = 'https://www.googleapis.com/drive/v3/files?key='+API_KEY;
@@ -23,8 +25,10 @@ export default async (req: Request, context: Context) => {
   
   // Accessing the request as `multipart/form-data`.
   const form = await req.formData();
+  console.log('received form data')
+  
   const file = form.get("file") as File;
-  console.log(file)
+  console.log('created file object')
 
   
   const requestBody = {
@@ -37,14 +41,16 @@ export default async (req: Request, context: Context) => {
     body: file
   };
   try {
-    const file = await service.files.create({
+    const file2 = await service.files.create({
       requestBody,
       media: media,
     });
-    console.log('File Id:', file.data.id);
+    console.log('File Id:', file2.data.id);
    // return file.data.id;
   } catch (err) {
     // TODO(developer) - Handle error
+	console.log('got error');
+	console.log(err)
     throw err;
   }
 
