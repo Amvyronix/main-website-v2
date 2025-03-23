@@ -7,7 +7,7 @@ import type { Context } from "@netlify/functions";
 
 export default async (req: Request, context: Context) => {
 
-  const API_KEY = const value = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+  const API_KEY = process.env.GOOGLE_DRIVE_AUTH_KEY;
 
   const API = 'https://www.googleapis.com/drive/v3/files?key='+API_KEY;
   
