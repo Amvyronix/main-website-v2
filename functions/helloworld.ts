@@ -18,7 +18,7 @@ export default async (req: Request, context: Context) => {
   const {google} = require('googleapis')
   
   const credentialsKeys = process.env.GOOGLE_APPLICATION_CREDENTIALS;
-  const keys = JSON.parse(keysEnvVar);
+  const keys = JSON.parse(credentialsKeys);
  
   const auth = new GoogleAuth({
 	credentials: keys,
