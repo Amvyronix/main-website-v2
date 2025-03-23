@@ -19,15 +19,16 @@ export default async (req: Request, context: Context) => {
   
   const keysEnvVar = process.env.GOOGLE_APPLICATION_CREDENTIALS;
   const keys = JSON.parse(keysEnvVar);
-  const client = GoogleAuth.fromJSON(keys);
-  client.scopes = ['https://www.googleapis.com/auth/drive']
-
+  
 
   
   const auth = new GoogleAuth({
 	//keyfile: KEYFILEPATH,
     scopes: 'https://www.googleapis.com/auth/drive'
   });
+  const client = auth.fromJSON(keys);
+  client.scopes = ['https://www.googleapis.com/auth/drive']
+
   
   const service = google.drive({version: 'v3', client});
   
