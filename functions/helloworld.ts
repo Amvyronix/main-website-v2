@@ -9,6 +9,7 @@ export default async (req: Request, context: Context) => {
 
 	console.log('method is called')
 
+  //const API_KEY = process.env.GOOGLE_DRIVE_AUTH_KEY;
   const API_KEY = process.env.GOOGLE_DRIVE_AUTH_KEY;
 
   const API = 'https://www.googleapis.com/drive/v3/files?key='+API_KEY;
@@ -16,12 +17,19 @@ export default async (req: Request, context: Context) => {
   const {GoogleAuth} = require('google-auth-library');
   const {google} = require('googleapis')
   
+  const keysEnvVar = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+  const keys = JSON.parse(keysEnvVar);
+  const client = GoogleAuth.fromJSON(keys);
+  client.scopes = ['https://www.googleapis.com/auth/drive']
+
+
+  
   const auth = new GoogleAuth({
 	//keyfile: KEYFILEPATH,
     scopes: 'https://www.googleapis.com/auth/drive'
   });
   
-  const service = google.drive({version: 'v3', auth});
+  const service = google.drive({version: 'v3', client});
   
   // Accessing the request as `multipart/form-data`.
   const form = await req.formData();
