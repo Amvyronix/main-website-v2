@@ -3,73 +3,129 @@
 
 import { getStore } from "@netlify/blobs";
 import type { Context } from "@netlify/functions";
-//import { v4 as uuid } from "uuid";
+import { Handler } from '@netlify/functions';
+import busboy from 'busboy';
 
-export default async (req: Request, context: Context) => {
+const fs = require('fs');
+const Readable = require('stream').Readable;
 
-	console.log('method is called')
 
-  //const API_KEY = process.env.GOOGLE_DRIVE_AUTH_KEY;
-  const API_KEY = process.env.GOOGLE_DRIVE_AUTH_KEY;
+type Fields = {
+  image: {
+      filename: string;
+      type: string;
+      content: Buffer;
+  }[];
+};
 
-  const API = 'https://www.googleapis.com/drive/v3/files?key='+API_KEY;
-  
-  const {GoogleAuth} = require('google-auth-library');
-  const {google} = require('googleapis')
-  
-  const credentialsKeys = process.env.GOOGLE_APPLICATION_CREDENTIALS;
-  const keys = JSON.parse(credentialsKeys);
+var uploadedFile;
+var uploadedFilename;
+
+const {GoogleAuth} = require('google-auth-library');
+const {google} = require('googleapis');
+
+const credentialsKeys = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+const keys = JSON.parse(credentialsKeys);
  
-  const auth = new GoogleAuth({
-	credentials: keys,
-    scopes: 'https://www.googleapis.com/auth/drive'
+const auth = new GoogleAuth({
+  credentials: keys,
+  scopes: 'https://www.googleapis.com/auth/drive'
+});
+const driveService = google.drive({version: 'v3', auth});
+  
+
+function parseMultipartForm(event): Promise<Fields> {
+  return new Promise((resolve) => {
+      const fields = { image: [] };
+      const bb = busboy({ headers: event.headers });
+
+      bb.on('file', (name, file, info) => {
+        
+        uploadedFile = file;
+
+          const { filename, mimeType } = info;
+
+          file.on('data', (data) => {
+            console.log('busboy inside file.data');
+            uploadedFile = data;
+            console.log('file data is: ', data);
+
+            if (!fields[name]) fields[name] = [];
+
+              fields[name].push({
+                  filename,
+                  type: mimeType,
+                  content: data,
+              });
+              uploadedFilename = filename;
+          });
+      });
+
+      bb.on('close', () => {
+          resolve(fields);
+      });
+
+      bb.end(Buffer.from(event.body, 'base64'));
   });
-  //const client = auth.fromJSON(keys);
-  //client.scopes = ['https://www.googleapis.com/auth/drive']
+}
 
-  
-  const service = google.drive({version: 'v3', auth});
-  
-  // Accessing the request as `multipart/form-data`.
-  const form = await req.formData();
-  console.log('received form data')
-  
-  const file = form.get("file") as File;
-  console.log('created file object')
-
-  
-  const requestBody = {
-    name: 'photo1.jpg',
-	parents: ['1hxNwrCcaP4SZ_mhQwTUZJVNdhzmofVy6'],
-    fields: 'id'
-  };
-  const media = {
-    mimeType: 'image/jpeg',
-    body: file
-  };
+export const handler: Handler = async (event) => {
   try {
-    const file2 = await service.files.create({
-      requestBody,
-      media: media,
+      const fields = await parseMultipartForm(event);
+
+      if (!fields) {
+          throw new Error('Unable to parse image');
+      }
+
+      
+  try {
+    
+    const driveResponse = await driveService.files.create({
+     
+      resource: {
+        name: uploadedFilename, // Use the original filename for the uploaded file
+        mimeType: 'application/pdf',
+        contentType: 'application/pdf',
+        parents: ['1hxNwrCcaP4SZ_mhQwTUZJVNdhzmofVy6'],
+        fields: 'id',
+
+      },
+      media: {
+        mimeType: 'application/pdf', // Set the MIME type
+        contentType: 'application/pdf',
+         body: Readable.from(uploadedFile),
+      },
+      
+
     });
-    console.log('File Id:', file2.data.id);
+
+    switch (driveResponse.status) {
+      case 200:
+        console.log('File uploaded successfully');
+        break;
+    }
+
+    console.log('File Id:', driveResponse.data.id);
    // return file.data.id;
+   
   } catch (err) {
     // TODO(developer) - Handle error
-	console.log('got error');
-	console.log(err)
+	  console.log('got error');
+	  console.log(err)
     throw err;
   }
 
 
 
-  // Accessing the request as `multipart/form-data`.
- // const form = await req.formData();
- // const file = form.get("file") as File;
-
-  // Generating a unique key for the entry.
- // const key = uuid();
-  
-
-  return new Response("Submission saved");
+      return {
+          statusCode: 200,
+          body: JSON.stringify("Submission saved"),
+      };
+  } catch (error) {
+      return {
+          statusCode: 400,
+          body: error.toString(),
+      };
+  }
 };
+
